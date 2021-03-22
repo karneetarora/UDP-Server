@@ -1,84 +1,115 @@
 import argparse
+import binascii
 from sys import argv
 import socket
 
 # First we use the argparse package to parse the arguments
 parser = argparse.ArgumentParser(description="""This is a very basic client program""")
 parser.add_argument('port', type=int, help='This is the port to connect to the server on', action='store')
-
 args = parser.parse_args(argv[1:])
 
-googleIP = '8.8.8.8'
-localPort = 24569
-
+# create server socket to communicate with client
 try:
-    sockk = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    print("[C]: Client socket created")
+    ss = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    print("[S]: Socket created")
 except socket.error as err:
-    print('Socket open error: {} \n'.format(err))
-    exit()
-SERVER = ('', args.port)
-sockk.bind((SERVER))
-sockk.listen(1)
-
-connection, address = sockk.accept()
-
-#create Socket to communicate with Google
-try:
-    UDP_Socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    UDP_Socket.bind((googleIP, localPort))
-    print("[C]: Client socket created")
-except socket.error as err:
-    print('socket open error: {} \n'.format(err))
+    print("[S]: Couldn't create socket due to {}".format(err))
     exit()
 
+# choose a port for the server
+server_addr = (socket.gethostname(), args.port)
+ss.bind(server_addr)
+ss.listen(1)
 
-with connection:
-    while True:
-        data = connection.recv(512)
-        data = data.decode('utf-8')
-        try:
-            UDP_Socket.connect(server_addr2)
-            UDP_Socket.sendall(data.encode('utf-8'))
-        except:
-            UDP_Socket.sendall(line.encode('utf-8'))
-        answer = UDP_Socket.recv(512)
-        answer = answer.decode('utf-8')
+# print server information
+host = socket.gethostname()
+print("[S]: The host is {}".format(host))
+localhost_ip = (socket.gethostbyname(host))
+print("[S]: Server IP: {}".format(localhost_ip))
 
-
-
-# now we need to open both files
-with open(args.out_file, 'w') as write_file:
-    for line in open(args.in_file, 'r'):
-        # trim the line to avoid weird new line things
-        line = line.strip()
-        # now we write whatever the server tells us to the out_file
-        if line:
-            client_sock.sendall(line.encode('utf-8'))
-            answer = client_sock.recv(512)
-
-            # decode answer
-            answer = answer.decode('utf-8')
-
-            # if hostname wasn't found in RS, string needs to be sent to TS
-            if 'NS' in answer:
-                server_addr2 = (args.rshost_name, args.tsListen_port)
-                try:
-                    client_sock2.connect(server_addr2)
-                    client_sock2.sendall(line.encode('utf-8'))
-                except:
-                    client_sock2.sendall(line.encode('utf-8'))
-                answer = client_sock2.recv(512)
-                answer = answer.decode('utf-8')
-                pass
-
-            write_file.write(answer + '\n')
+# accept a client
+csockid, addr = ss.accept()
+print("[S]: Got a connection, client is at {}".format(addr))
 
 
-# close the socket (note this will be visible to the other side)
-client_sock.close()
+# This function sends a message to the UDP server
+# Function taken from resource: "https://routley.io/posts/hand-writing-dns-messages/"
+def send_udp_message(message, address, port):
+    message = message.replace(" ", "").replace("\n", "")
+    server_address = (address, port)
 
-for line in open(args.out_file, 'r+'):
-    if 'NS' in line:
-        line = 'Replace'
-    print(line)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.sendto(binascii.unhexlify(message), server_address)
+        data, _ = sock.recvfrom(4096)
+    finally:
+        sock.close()
+    return binascii.hexlify(data).decode("utf-8")
+
+
+# This function returns a pretty version of a hex string
+# Function taken from resource: https://routley.io/posts/hand-writing-dns-messages/
+def format_hex(hex):
+    octets = [hex[i:i + 2] for i in range(0, len(hex), 2)]
+    pairs = [" ".join(octets[i:i + 2]) for i in range(0, len(octets), 2)]
+    return "\n".join(pairs)
+
+
+# This function converts letters into hex
+def toHex(s, lin):
+    for ch in s:
+        hv = hex(ord(ch)).replace('0x', '')
+        lin.append(hv)
+    return lin
+
+
+# This function concatenates each element in the list together
+def concatenateList(list):
+    result = ""
+    for element in list:
+        result += str(element)
+        result += ' '
+    return result
+
+
+# This function makes the final hexadecimal DNS query
+def domainToHex(domainName):
+    firstPart = "AA AA 01 00 00 01 00 00 00 00 00 00 "
+    lastPart = "00 01 00 01"
+
+    domainName_list = domainName.split(".")
+    stringcount = len(domainName_list)
+    ListofSizesOfParts = []
+
+    for i in range(stringcount):
+        if len(domainName_list[i]) < 10:
+            ListofSizesOfParts.append("%02d" % len(domainName_list[i]))
+            toHex(domainName_list[i], ListofSizesOfParts)
+        elif len(domainName_list[i]) >= 10:
+            ListofSizesOfParts.append(len(domainName_list[i]))
+            toHex(domainName_list[i], ListofSizesOfParts)
+    ListofSizesOfParts.append('00')
+
+    finalResult = firstPart + concatenateList(ListofSizesOfParts) + lastPart
+    return finalResult
+
+
+while True:
+    clientData = csockid.recv(512)
+    if not clientData:
+        break
+    clientData = clientData.decode('utf-8')
+
+    print("Domain: " + clientData)
+    DNSquery = domainToHex(clientData)
+    print("Query: " + DNSquery)
+
+    response = send_udp_message(DNSquery, "8.8.8.8", 53)
+    print(format_hex(response))
+
+
+# Close the server socket
+ss.close()
+exit()
+
+
