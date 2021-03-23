@@ -100,13 +100,25 @@ while True:
         break
     clientData = clientData.decode('utf-8')
 
-    print("Domain: " + clientData)
     DNSquery = domainToHex(clientData)
-    print("Query: " + DNSquery)
 
     response = send_udp_message(DNSquery, "8.8.8.8", 53)
-    print(format_hex(response))
+    finResponse = format_hex(response)
 
+    finResponseList = finResponse.split()
+    res = finResponseList[-4:]
+
+    final = []
+    for i in range(len(res)):
+        final.append(int(res[i], 16))
+
+    finalIP = ""
+    for element in final:
+        finalIP += str(element)
+        finalIP += '.'
+    finalIP = finalIP[:-1]
+
+    csockid.send(finalIP.encode('utf-8'))
 
 # Close the server socket
 ss.close()
