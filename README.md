@@ -6,10 +6,10 @@ Group - 36
 
 1. Are there known issues or functions that aren't working currently in your
    attached code? If so, explain. (note that you will get half credit for any reasonably sized bug that is fully explained in the readme)
-    - As of right now, the program only prints the IP address. It does not print multiple IP addresss'. 
+    - The program runs and does it's main function perfectly. But, it does not print multiple IP's if there are many answers, and it does not         print 'OTHER' for non-A answers. I had trouble getting those functions to work.
 
 2. What problems did you face developing code for this project?
-    - One challenge was being able to format the message and then transmitting it to UDP server. It was also hard to understand how to convert/read the query response.
+    - Learning to write the DNS messages 'by hand' took a long time. The routly resource was very confusing (for me at least) and took most of       my time trying to understand that. After I understood, it wasn't too bad.
 
 3. Around how long did you spend on this project (This helps me decide what I need to explain more clearly for the next projects)
-    - We spent close to 8.5 hours.
+    - We spent over 12 hours.
