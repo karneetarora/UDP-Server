@@ -9,7 +9,7 @@ Group - 36
     - As of right now, the program only prints the IP address. It does not print multiple IP addresss'. 
 
 2. What problems did you face developing code for this project?
-    - One challenge was being able to format the message and then transmitting it to UDP server. It wss also hard to understand how to convert/read the query response.
+    - One challenge was being able to format the message and then transmitting it to UDP server. It was also hard to understand how to convert/read the query response.
 
 3. Around how long did you spend on this project (This helps me decide what I need to explain more clearly for the next projects)
     - We spent close to 8.5 hours.
